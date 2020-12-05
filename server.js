@@ -19,10 +19,12 @@ let credentials = new Map()
 let tokens = new Map()
 let listing = new Map()
 let cart = new Map()
+let chatHistory = new Map()
 let purchaseHistory = new Map()
 let listingId = 0
 let chartId = 0
 let purchaseHistoryId = 0
+let chatHistoryId = 0
 
 app.get("/sourcecode", (req, res) => {
   res.send(require('fs').readFileSync(__filename).toString())
@@ -487,10 +489,69 @@ app.post("/chat", (req, res) => {
       return
     }
   
+    chatHistoryId ++
+    chatHistory.set(chatHistoryId, ({"from": user,"to":destination,"contents":contents}))
     res.send(JSON.stringify({ success: true}))
     return
 })
 
+// This endpoint lets a user retrieve all the messages sent between themselves and another user.
+app.post("/chat-messages", (req, res) => {
+    let tokenId = req.headers.token
+    let user = tokens.get(tokenId)
+    
+    if (tokenId == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "token field missing" }))
+      return
+    }
+  
+    if (!tokens.has(tokenId)) {
+      res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
+      return
+    }
+  
+    let parsed = JSON.parse(req.body)
+    let destination = parsed.destination
+
+    if (destination == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "destination field missing" }))
+      return
+    }
+  
+    let found = false
+    for (let keys of tokens.values()) {
+      if (keys == destination) {
+        found = true
+      }
+    }
+  
+    if (found == false) {
+      res.send(JSON.stringify({ success: false, reason: "Destination user not found" }))
+      return
+    }
+    
+    console.log(chatHistory)
+    let response = []
+    let from = ""
+    let contents = ""
+    for (let keys of chatHistory.keys()) {
+        let obj = chatHistory.get(parseInt(keys))
+        if (Object.values(obj)[0] == user ) {
+          from = Object.values(obj)[0]
+          contents = Object.values(obj)[2]
+          response.push({"from": from,"contents":contents})
+        }
+        if (Object.values(obj)[1] == user ) {
+          from = Object.values(obj)[0]
+          contents = Object.values(obj)[2]
+          response.push({"from": from,"contents":contents})
+        }
+      }
+    
+  
+    res.send(JSON.stringify({ success: true, messages: response}))
+    return
+})
 
 // listen for requests :)
 const listener = app.listen(process.env.PORT, () => {
