@@ -19,8 +19,10 @@ let credentials = new Map()
 let tokens = new Map()
 let listing = new Map()
 let cart = new Map()
+let purchaseHistory = new Map()
 let listingId = 0
 let chartId = 0
+let purchaseHistoryId = 0
 
 app.get("/sourcecode", (req, res) => {
   res.send(require('fs').readFileSync(__filename).toString())
@@ -367,8 +369,6 @@ app.post("/checkout", (req, res) => {
       res.send(JSON.stringify({ success: false, reason: "Empty cart"}))
       return
     }
-  
-    
     
     let foundInListing = false
     
@@ -382,8 +382,6 @@ app.post("/checkout", (req, res) => {
       res.send(JSON.stringify({ success: false, reason: "Item in cart no longer available"}))
       return
     }
-  
-    
   
     let reponse = []
     for (let keys of cart.keys()) {
@@ -399,14 +397,51 @@ app.post("/checkout", (req, res) => {
         sellerUsername = Object.values(obj)[3][1]
         listing.delete(itemId)
         cart.delete(keys)
+        purchaseHistoryId++
+        purchaseHistory.set(purchaseHistoryId, ({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername, "user":user}))
         console.log({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername, "user":user})
       }
     }
-    console.log("CART AFTER")
-    console.log(cart)
     res.send(JSON.stringify({ success: true}))
     return
   
+})
+
+// This endpoint is used to get a list of items that were purchased by a particular user.
+app.get("/purchase-history", (req, res) => {
+    let tokenId = req.headers.token
+    let user = tokens.get(tokenId)
+    let price = ""
+    let description = ""
+    let itemId = ""
+    let sellerUsername = ""
+
+    if (tokenId == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "token field missing" }))
+      return
+    }
+  
+    if (!tokens.has(tokenId)) {
+      res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
+      return
+    }
+    console.log("PURCHASE HISTORY")
+    console.log(purchaseHistory)
+    let reponse = []
+    
+    for (let keys of purchaseHistory.keys()) {
+      let obj = purchaseHistory.get(parseInt(keys))
+      if (Object.values(obj)[4] == user) {
+        price = Object.values(obj)[0]
+        description = Object.values(obj)[1]
+        itemId = Object.values(obj)[2]
+        sellerUsername = Object.values(obj)[3]
+        reponse.push({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername})
+      }
+    }
+      
+    res.send(JSON.stringify({ success: true, purchased : reponse}))
+    return
 })
 
 
