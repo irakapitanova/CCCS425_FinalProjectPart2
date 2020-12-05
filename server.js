@@ -631,6 +631,7 @@ app.post("/review-seller", (req, res) => {
     let numStars = parsed.numStars
     let contents = parsed.contents
     let itemid = parsed.itemid
+    let sellerUsername = ""
 
     if (tokenId == undefined) {
       res.send(JSON.stringify({ success: false, reason: "token field missing" }))
@@ -642,12 +643,11 @@ app.post("/review-seller", (req, res) => {
       return
     }
   
-    let found = false
-    console.log("PURCHASE HISTORY")
-    console.log(purchaseHistory)  
+    let found = false 
     for (let keys of purchaseHistory.keys()) {
       let obj = purchaseHistory.get(parseInt(keys))
       if (Object.values(obj)[2] == itemid && Object.values(obj)[4] == user) {
+        sellerUsername = Object.values(obj)[3]
         found = true
       } 
     }
@@ -663,11 +663,37 @@ app.post("/review-seller", (req, res) => {
     }
   
     sellerReviewId ++
-    sellerReview.set(itemid, ({"numStars":numStars, "contents":contents}))
+    sellerReview.set(itemid, ({"numStars":numStars, "contents":contents,"from":user,"sellerUsername":sellerUsername}))
     res.send(JSON.stringify({ success: true}))
     console.log("SELLER REVIEW")
     console.log(sellerReview)
     return
+})
+
+// This endpoint retrieves all the reviews for a particular user.
+app.get("/reviews", (req, res) => {
+    let sellerUsername = req.query.sellerUsername
+    console.log("SELLER REVIEW")
+    console.log(sellerReview)
+  
+    let response = []
+    let from = ""
+    let contents = ""
+    let numStars = ""
+    for (let keys of sellerReview.keys()) {
+        let obj = sellerReview.get(parseInt(keys))
+        if (Object.values(obj)[3] == sellerUsername ) {
+          from = Object.values(obj)[2]
+          contents = Object.values(obj)[1]
+          numStars = Object.values(obj)[0]
+          response.push({"from": from,"contents":contents,"numStars":numStars})
+        }
+    }
+    
+  
+    res.send(JSON.stringify({ success: true, reviews: response}))
+    return
+
 })
 
 // listen for requests :)
