@@ -444,6 +444,53 @@ app.get("/purchase-history", (req, res) => {
     return
 })
 
+// This endpoint lets a user contact another user in the marketplace
+app.post("/chat", (req, res) => {
+    console.log(req.body)
+    let tokenId = req.headers.token
+    let user = tokens.get(tokenId)
+    
+    if (tokenId == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "token field missing" }))
+      return
+    }
+  
+    if (!tokens.has(tokenId)) {
+      res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
+      return
+    }
+    
+    
+    let parsed = JSON.parse(req.body)
+    let destination = parsed.destination
+    let contents = parsed.contents
+
+    if (destination == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "destination field missing" }))
+      return
+    }
+  
+    if (contents == undefined) {
+        res.send(JSON.stringify({ success: false, reason: "contents field missing" }))
+      return
+    }
+
+    let found = false
+    for (let keys of tokens.values()) {
+      if (keys == destination) {
+        found = true
+      }
+    }
+  
+    if (found == false) {
+      res.send(JSON.stringify({ success: false, reason: "Destination user does not exist" }))
+      return
+    }
+  
+    res.send(JSON.stringify({ success: true}))
+    return
+})
+
 
 // listen for requests :)
 const listener = app.listen(process.env.PORT, () => {
