@@ -22,11 +22,13 @@ let cart = new Map()
 let chatHistory = new Map()
 let purchaseHistory = new Map()
 let shipHistory = new Map()
+let sellerReview = new Map()
 let listingId = 0
 let chartId = 0
 let purchaseHistoryId = 0
 let chatHistoryId = 0
 let shipHistoryId = 0
+let sellerReviewId = 0
 
 app.get("/sourcecode", (req, res) => {
   res.send(require('fs').readFileSync(__filename).toString())
@@ -618,6 +620,53 @@ app.get("/status", (req, res) => {
     }
 
     res.send(JSON.stringify({ success: true, status: "not-shipped" }))
+    return
+})
+
+// This endpoint lets a user review a seller. The HTTP request must contain a header called token.
+app.post("/review-seller", (req, res) => {
+    let tokenId = req.headers.token
+    let user = tokens.get(tokenId)
+    let parsed = JSON.parse(req.body)
+    let numStars = parsed.numStars
+    let contents = parsed.contents
+    let itemid = parsed.itemid
+
+    if (tokenId == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "token field missing" }))
+      return
+    }
+  
+    if (!tokens.has(tokenId)) {
+      res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
+      return
+    }
+  
+    let found = false
+    console.log("PURCHASE HISTORY")
+    console.log(purchaseHistory)  
+    for (let keys of purchaseHistory.keys()) {
+      let obj = purchaseHistory.get(parseInt(keys))
+      if (Object.values(obj)[2] == itemid && Object.values(obj)[4] == user) {
+        found = true
+      } 
+    }
+    
+    if (found == false) {
+      res.send(JSON.stringify({ success: false, reason: "User has not purchased this item"}))
+      return
+    }
+    
+    if (sellerReview.has(parseInt(itemid))) {
+      res.send(JSON.stringify({ success: false, reason: "This transaction was already reviewed"}))
+      return
+    }
+  
+    sellerReviewId ++
+    sellerReview.set(itemid, ({"numStars":numStars, "contents":contents}))
+    res.send(JSON.stringify({ success: true}))
+    console.log("SELLER REVIEW")
+    console.log(sellerReview)
     return
 })
 
