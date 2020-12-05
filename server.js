@@ -601,6 +601,26 @@ app.post("/ship", (req, res) => {
     return
 })
 
+// This endpoint gets the shipping status of an item.
+app.get("/status", (req, res) => {
+    let itemid = req.query.itemid
+    console.log(shipHistory)
+  
+    if (listing.has(parseInt(itemid))) {
+      res.send(JSON.stringify({ success: false, reason: "Item not sold" }))
+      return
+    }
+  
+    console.log(shipHistory.has(itemid))
+    if (shipHistory.has(parseInt(itemid))) {
+      res.send(JSON.stringify({ success: true, status: "shipped" }))
+      return
+    }
+
+    res.send(JSON.stringify({ success: true, status: "not-shipped" }))
+    return
+})
+
 // listen for requests :)
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
