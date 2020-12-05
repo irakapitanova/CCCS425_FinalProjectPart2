@@ -17,8 +17,8 @@ app.use(bodyParser.raw({ type: "*/*" }))
 
 let credentials = new Map()
 let tokens = new Map()
-let listing = []
-let cart = []
+let listing = new Map()
+let cart = new Map()
 let listingId = 0
 
 app.get("/sourcecode", (req, res) => {
@@ -151,7 +151,9 @@ app.post("/create-listing", (req, res) => {
     }
   
     listingId ++
-    listing.push({"listingId":(listingId), "price": price, "description": description, "sellerUsername" : sellerUsername, "availability": true})
+    let obj = {"price": price, "description": description, "sellerUsername" : sellerUsername, "availability": true}
+    
+    listing.set(listingId, Object.entries(obj))
     res.send(JSON.stringify({ success: true, listingId : listingId}))
     console.log("LISTING: ")
     console.log(listing)
@@ -164,26 +166,27 @@ app.get("/listing", (req, res) => {
     let price = ""
     let description = ""
     let sellerUsername = ""
-
-  
-    for (let key in listing) {
-      if(listing[key].listingId == listingId) {
-        console.log(listing[key].listingId)
-        price = listing[key].price
-        description = listing[key].description
-        itemId = listing[key].listingId
-        sellerUsername = listing[key].sellerUsername
-      }
-    }
     
-    if (itemId != undefined) {
-      res.send(JSON.stringify({ success: true, listing : {"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername}}))
-      return
+    let found = false
+    for (let keys of listing.keys()) {
+      if (keys == listingId) {
+        found = true
+      } 
     }
-    else {
+  
+    if (found == false) {
       res.send(JSON.stringify({ success: false, reason: "Invalid listing id" }))
       return
     }
+  
+    console.log("GET VALUE FROM MAP")
+    let obj = listing.get(parseInt(listingId))
+    price = Object.values(obj)[0][1]
+    description = Object.values(obj)[1][1]
+    sellerUsername = Object.values(obj)[2][1]
+
+    res.send(JSON.stringify({ success: true, listing : {"price": price,"description":description,"itemId":parseInt(listingId),"sellerUsername":sellerUsername}}))
+    return
 })
 
 // This endpoint is used to modify a listing.
@@ -210,23 +213,27 @@ app.post("/modify-listing", (req, res) => {
       return
     }
   
+    console.log("GET VALUE FROM MAP")
+    console.log(listing)
+    let obj = listing.get(parseInt(itemid))
+    //price = Object.values(obj)[0][1]
+    //description = Object.values(obj)[1][1]
+    //console.log(price)
+    //console.log(description)
   
-    for (let key in listing) {
-      if(listing[key].listingId == itemid) {
-        if (price == undefined) {
-          price = listing[key].price
-        }
-        
-        if (description == undefined) {
-          description = listing[key].description
-        }
-        
-        listing.splice(key, 1)
-        listing.push({"listingId":itemid, "price": price, "description": description, "sellerUsername" : sellerUsername, "availability": true})
-        res.send(JSON.stringify({ success: true}))
-        return
-      }
+    if (price == undefined) {
+      price = Object.values(obj)[0][1]
     }
+  
+    if (description == undefined) {
+        description = Object.values(obj)[1][1]
+    }
+
+    let values = {"price": price, "description": description, "sellerUsername" : sellerUsername, "availability": true}
+    listing.set(itemid, Object.entries(values))
+    console.log(listing)
+    res.send(JSON.stringify({ success: true}))
+    return
   })
 
 // This endpoint is used to add an item to a user's cart
@@ -256,25 +263,27 @@ app.post("/add-to-cart", (req, res) => {
       return
     }
   
-    let flag = false
-    for (let key in listing) {
-      if(listing[key].listingId == itemid) {
-        flag = true
-        price = listing[key].price
-        description = listing[key].description
-        sellerUsername = listing[key].sellerUsername
-      }
+    let found = false
+    for (let keys of listing.keys()) {
+      if (keys == itemid) {
+        found = true
+      } 
     }
   
-    if (flag == true) {
-      cart.push({"itemId":itemid, "price":price, "description":description, "sellerUsername":sellerUsername, "user":user})
-      res.send(JSON.stringify({ success: true}))
+    if (found == false) {
+      res.send(JSON.stringify({ success: false, reason: "Item not found" }))
       return
     }
-    else {
-      res.send(JSON.stringify({ success: false, reason: "Item not found"}))
-    }
-    console.log(cart)
+    
+    let obj = listing.get(parseInt(itemid))
+    price = Object.values(obj)[0][1]
+    description = Object.values(obj)[1][1]
+    sellerUsername = Object.values(obj)[2][1]
+  
+    let values = {"price":price, "description":description, "sellerUsername":sellerUsername, "user":user}
+    
+    cart.set(itemid, Object.entries(values))
+    res.send(JSON.stringify({ success: true}))
 })
 
 // This endpoint is used to retrieve a list of items in a user's cart
@@ -298,25 +307,18 @@ app.get("/cart", (req, res) => {
   
     console.log("CART:")
     console.log(cart)
-  
     let reponse = []
-    for (let key in cart) {
-      console.log("INSIDE LOOP:")
-      console.log(reponse)
-      if(cart[key].user.includes(user)) {
-        price = cart[key].price
-        description = cart[key].description
-        itemId = cart[key].itemId
-        sellerUsername = cart[key].sellerUsername
-        reponse.push({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername})
-        console.log("INSIDE IF:")
-        console.log(reponse)
+    
+    for (let keys of cart.keys()) {
+      let obj = cart.get(parseInt(keys))
+      if (Object.values(obj)[3][1] == user) {
+        price = Object.values(obj)[0][1]
+        description = Object.values(obj)[1][1]
+        sellerUsername = Object.values(obj)[2][1]
+        reponse.push({"price": price,"description":description,"itemId":keys,"sellerUsername":sellerUsername})
       }
     }
-  
-    console.log("finale:")
-    console.log(reponse)
-    
+      
     res.send(JSON.stringify({ success: true, cart : reponse}))
     return
 })
@@ -341,46 +343,64 @@ app.post("/checkout", (req, res) => {
       return
     }
   
-    console.log("LISTING before:")
-    console.log(listing)
-    console.log("CART before:")
+    console.log("CART")
     console.log(cart)
-
-    let reponse = []
-    for (let key in cart) {
-      if(cart[key].user.includes(user)) {
-        price = cart[key].price
-        description = cart[key].description
-        itemId = cart[key].itemId
-        sellerUsername = cart[key].sellerUsername
-        for(let key in listing) {
-          if(listing[key].listingId != itemId) {
-            res.send(JSON.stringify({ success: false, reason: "Item in cart no longer available" }))
-            return
-          }
-          
-          if(listing[key].listingId == itemId && listing[key].sellerUsername == sellerUsername) {
-            listing.splice(key, 1)
-            listing.push({"listingId":itemId, "price": price, "description": description, "sellerUsername" : sellerUsername,  "availability": false})
-          }
-        }
-        reponse.push({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername})
-      }
+    console.log("LISTING")
+    console.log(listing)
+  
+    let found = false
+    
+    for (let keys of cart.keys()) {
+      let obj = cart.get(parseInt(keys))
+      if (Object.values(obj)[3][1] == user) {
+        itemId = keys
+        found = true
+      } 
     }
   
-    console.log("LISTING after")
-    console.log(listing)
-    console.log("CART after:")
-    console.log(cart)
+    console.log(itemId)
   
-    console.log("RESPONSE")
-    console.log(reponse)
-    console.log(reponse.length)
-    if (reponse.length == 0 ) {
-      res.send(JSON.stringify({ success: false, reason: "Empty cart" }))
+    if (found == false) {
+      res.send(JSON.stringify({ success: false, reason: "Empty cart"}))
       return
     }
+  
     
+    
+    let foundInListing = false
+    
+    for (let keys of listing.keys()) {
+      if (keys == itemId) {
+        foundInListing = true
+      } 
+    }
+    
+    console.log(foundInListing)
+    
+    if (foundInListing == false) {
+      res.send(JSON.stringify({ success: false, reason: "Item in cart no longer available"}))
+      return
+    }
+  
+    
+  
+    let reponse = []
+    for (let keys of cart.keys()) {
+      let obj = cart.get(parseInt(keys))
+      if (Object.values(obj)[3][1] == user) {
+        price = Object.values(obj)[0][1]
+        description = Object.values(obj)[1][1]
+        sellerUsername = Object.values(obj)[2][1]
+        listing.delete(keys)
+        cart.delete(keys)
+        reponse.push({"price": price,"description":description,"itemId":keys,"sellerUsername":sellerUsername, "user":user})
+      }
+    }
+    console.log(reponse)
+    console.log("LISTING")
+    console.log(listing)
+    console.log("CART")
+    console.log(cart)
     res.send(JSON.stringify({ success: true}))
     return
   
