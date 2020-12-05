@@ -21,10 +21,12 @@ let listing = new Map()
 let cart = new Map()
 let chatHistory = new Map()
 let purchaseHistory = new Map()
+let shipHistory = new Map()
 let listingId = 0
 let chartId = 0
 let purchaseHistoryId = 0
 let chatHistoryId = 0
+let shipHistoryId = 0
 
 app.get("/sourcecode", (req, res) => {
   res.send(require('fs').readFileSync(__filename).toString())
@@ -550,6 +552,52 @@ app.post("/chat-messages", (req, res) => {
     
   
     res.send(JSON.stringify({ success: true, messages: response}))
+    return
+})
+
+// This endpoint is used by a seller of an item to indicate that it has shipped to a purchaser of an item.
+app.post("/ship", (req, res) => {
+    let tokenId = req.headers.token
+    let user = tokens.get(tokenId)
+    let parsed = JSON.parse(req.body)
+    let itemid = parsed.itemid
+    
+    if (tokenId == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "token field missing" }))
+      return
+    }
+  
+    if (!tokens.has(tokenId)) {
+      res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
+      return
+    }
+  
+    if (listing.has(itemid)) {
+      res.send(JSON.stringify({ success: false, reason: "Item was not sold" }))
+      return
+    }
+    
+    let found = false
+    
+    for (let keys of purchaseHistory.keys()) {
+      let obj = purchaseHistory.get(parseInt(keys))
+      if (Object.values(obj)[2] == itemid && Object.values(obj)[3] == user) {
+        found = true
+      } 
+    }
+    
+    if (found == false) {
+      res.send(JSON.stringify({ success: false, reason: "User is not selling that item"}))
+      return
+    }
+    
+    if (shipHistory.has(itemid)) {
+      res.send(JSON.stringify({ success: false, reason: "Item has already shipped"}))
+      return
+    }
+  
+    shipHistory.set(itemid)
+    res.send(JSON.stringify({ success: true}))
     return
 })
 
