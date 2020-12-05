@@ -343,10 +343,8 @@ app.post("/checkout", (req, res) => {
       return
     }
   
-    console.log("CART")
+    console.log("CART BEFORE")
     console.log(cart)
-    console.log("LISTING")
-    console.log(listing)
   
     let found = false
     
@@ -374,9 +372,7 @@ app.post("/checkout", (req, res) => {
         foundInListing = true
       } 
     }
-    
-    console.log(foundInListing)
-    
+        
     if (foundInListing == false) {
       res.send(JSON.stringify({ success: false, reason: "Item in cart no longer available"}))
       return
@@ -387,19 +383,20 @@ app.post("/checkout", (req, res) => {
     let reponse = []
     for (let keys of cart.keys()) {
       let obj = cart.get(parseInt(keys))
+      console.log("USER: " + user)
+      console.log(Object.values(obj)[3][1])
+      console.log("CONSITION: " + Object.values(obj)[3][1] == user)
+      
       if (Object.values(obj)[3][1] == user) {
         price = Object.values(obj)[0][1]
         description = Object.values(obj)[1][1]
         sellerUsername = Object.values(obj)[2][1]
         listing.delete(keys)
         cart.delete(keys)
-        reponse.push({"price": price,"description":description,"itemId":keys,"sellerUsername":sellerUsername, "user":user})
+        console.log({"price": price,"description":description,"itemId":keys,"sellerUsername":sellerUsername, "user":user})
       }
     }
-    console.log(reponse)
-    console.log("LISTING")
-    console.log(listing)
-    console.log("CART")
+    console.log("CART AFTER")
     console.log(cart)
     res.send(JSON.stringify({ success: true}))
     return
