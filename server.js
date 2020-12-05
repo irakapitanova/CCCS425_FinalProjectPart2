@@ -151,7 +151,7 @@ app.post("/create-listing", (req, res) => {
     }
   
     listingId ++
-    listing.push({"listingId":(listingId), "price": price, "description": description, "sellerUsername" : sellerUsername})
+    listing.push({"listingId":(listingId), "price": price, "description": description, "sellerUsername" : sellerUsername, "availability": true})
     res.send(JSON.stringify({ success: true, listingId : listingId}))
     console.log("LISTING: ")
     console.log(listing)
@@ -222,7 +222,7 @@ app.post("/modify-listing", (req, res) => {
         }
         
         listing.splice(key, 1)
-        listing.push({"listingId":itemid, "price": price, "description": description, "sellerUsername" : sellerUsername})
+        listing.push({"listingId":itemid, "price": price, "description": description, "sellerUsername" : sellerUsername, "availability": true})
         res.send(JSON.stringify({ success: true}))
         return
       }
@@ -319,6 +319,71 @@ app.get("/cart", (req, res) => {
     
     res.send(JSON.stringify({ success: true, cart : reponse}))
     return
+})
+
+
+// This endpoint is used to purchase all the items in a user's cart
+app.post("/checkout", (req, res) => {
+    let tokenId = req.headers.token
+    let user = tokens.get(tokenId)
+    let price = ""
+    let description = ""
+    let itemId = ""
+    let sellerUsername = ""
+
+    if (tokenId == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "token field missing" }))
+      return
+    }
+  
+    if (!tokens.has(tokenId)) {
+      res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
+      return
+    }
+  
+    console.log("LISTING before:")
+    console.log(listing)
+    console.log("CART before:")
+    console.log(cart)
+
+    let reponse = []
+    for (let key in cart) {
+      if(cart[key].user.includes(user)) {
+        price = cart[key].price
+        description = cart[key].description
+        itemId = cart[key].itemId
+        sellerUsername = cart[key].sellerUsername
+        for(let key in listing) {
+          if(listing[key].listingId != itemId) {
+            res.send(JSON.stringify({ success: false, reason: "Item in cart no longer available" }))
+            return
+          }
+          
+          if(listing[key].listingId == itemId && listing[key].sellerUsername == sellerUsername) {
+            listing.splice(key, 1)
+            listing.push({"listingId":itemId, "price": price, "description": description, "sellerUsername" : sellerUsername,  "availability": false})
+          }
+        }
+        reponse.push({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername})
+      }
+    }
+  
+    console.log("LISTING after")
+    console.log(listing)
+    console.log("CART after:")
+    console.log(cart)
+  
+    console.log("RESPONSE")
+    console.log(reponse)
+    console.log(reponse.length)
+    if (reponse.length == 0 ) {
+      res.send(JSON.stringify({ success: false, reason: "Empty cart" }))
+      return
+    }
+    
+    res.send(JSON.stringify({ success: true}))
+    return
+  
 })
 
 
