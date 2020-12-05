@@ -20,6 +20,7 @@ let tokens = new Map()
 let listing = new Map()
 let cart = new Map()
 let listingId = 0
+let chartId = 0
 
 app.get("/sourcecode", (req, res) => {
   res.send(require('fs').readFileSync(__filename).toString())
@@ -280,9 +281,10 @@ app.post("/add-to-cart", (req, res) => {
     description = Object.values(obj)[1][1]
     sellerUsername = Object.values(obj)[2][1]
   
-    let values = {"price":price, "description":description, "sellerUsername":sellerUsername, "user":user}
+    chartId ++
+    let values = {"itemid":itemid,"price":price, "description":description, "sellerUsername":sellerUsername, "user":user}
     
-    cart.set(itemid, Object.entries(values))
+    cart.set(chartId, Object.entries(values))
     res.send(JSON.stringify({ success: true}))
 })
 
@@ -311,11 +313,12 @@ app.get("/cart", (req, res) => {
     
     for (let keys of cart.keys()) {
       let obj = cart.get(parseInt(keys))
-      if (Object.values(obj)[3][1] == user) {
-        price = Object.values(obj)[0][1]
-        description = Object.values(obj)[1][1]
-        sellerUsername = Object.values(obj)[2][1]
-        reponse.push({"price": price,"description":description,"itemId":keys,"sellerUsername":sellerUsername})
+      if (Object.values(obj)[4][1] == user) {
+        itemId = Object.values(obj)[0][1]
+        price = Object.values(obj)[1][1]
+        description = Object.values(obj)[2][1]
+        sellerUsername = Object.values(obj)[3][1]
+        reponse.push({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername})
       }
     }
       
@@ -342,7 +345,9 @@ app.post("/checkout", (req, res) => {
       res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
       return
     }
-  
+
+    console.log("LISTING BEFORE")
+    console.log(listing)
     console.log("CART BEFORE")
     console.log(cart)
   
@@ -350,8 +355,8 @@ app.post("/checkout", (req, res) => {
     
     for (let keys of cart.keys()) {
       let obj = cart.get(parseInt(keys))
-      if (Object.values(obj)[3][1] == user) {
-        itemId = keys
+      if (Object.values(obj)[4][1] == user) {
+        itemId = Object.values(obj)[0][1]
         found = true
       } 
     }
@@ -384,16 +389,17 @@ app.post("/checkout", (req, res) => {
     for (let keys of cart.keys()) {
       let obj = cart.get(parseInt(keys))
       console.log("USER: " + user)
-      console.log(Object.values(obj)[3][1])
-      console.log("CONSITION: " + Object.values(obj)[3][1] == user)
+      console.log(Object.values(obj)[4][1])
+      console.log("CONSITION: " + Object.values(obj)[4][1] == user)
       
-      if (Object.values(obj)[3][1] == user) {
-        price = Object.values(obj)[0][1]
-        description = Object.values(obj)[1][1]
-        sellerUsername = Object.values(obj)[2][1]
-        listing.delete(keys)
+      if (Object.values(obj)[4][1] == user) {
+        itemId = Object.values(obj)[0][1]
+        price = Object.values(obj)[1][1]
+        description = Object.values(obj)[2][1]
+        sellerUsername = Object.values(obj)[3][1]
+        listing.delete(itemId)
         cart.delete(keys)
-        console.log({"price": price,"description":description,"itemId":keys,"sellerUsername":sellerUsername, "user":user})
+        console.log({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername, "user":user})
       }
     }
     console.log("CART AFTER")
