@@ -696,6 +696,39 @@ app.get("/reviews", (req, res) => {
 
 })
 
+// This endpoint retrieves all items that a user is currently selling
+app.get("/selling", (req, res) => {
+    let sellerUsername = req.query.sellerUsername
+    console.log("LISTING")
+    console.log(listing)
+    if (sellerUsername == undefined) {
+        res.send(JSON.stringify({ success: false, reason: "sellerUsername field missing" }))
+        return
+    }  
+  
+    let response = []
+    let price = ""
+    let description = ""
+    let itemId = ""
+    for (let keys of listing.keys()) {
+        let obj = listing.get(parseInt(keys))
+        console.log(Object.values(obj)[2])
+        console.log(sellerUsername)
+        if (Object.values(obj)[2][1] == sellerUsername ) {
+          price = Object.values(obj)[0][1]
+          description = Object.values(obj)[1][1]
+          itemId = keys
+          sellerUsername = Object.values(obj)[2][1]
+          response.push({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername})
+        }
+    }
+    
+
+    res.send(JSON.stringify({ success: true, selling: response}))
+    return
+
+})
+
 // listen for requests :)
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
