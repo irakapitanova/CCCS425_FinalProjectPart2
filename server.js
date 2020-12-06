@@ -22,11 +22,13 @@ let cart = new Map()
 let chatHistory = new Map()
 let purchaseHistory = new Map()
 let shipHistory = new Map()
+let sellerReview = new Map()
 let listingId = 0
 let chartId = 0
 let purchaseHistoryId = 0
 let chatHistoryId = 0
 let shipHistoryId = 0
+let sellerReviewId = 0
 
 app.get("/sourcecode", (req, res) => {
   res.send(require('fs').readFileSync(__filename).toString())
@@ -599,6 +601,132 @@ app.post("/ship", (req, res) => {
     shipHistory.set(itemid)
     res.send(JSON.stringify({ success: true}))
     return
+})
+
+// This endpoint gets the shipping status of an item.
+app.get("/status", (req, res) => {
+    let itemid = req.query.itemid
+    console.log(shipHistory)
+  
+    if (listing.has(parseInt(itemid))) {
+      res.send(JSON.stringify({ success: false, reason: "Item not sold" }))
+      return
+    }
+  
+    console.log(shipHistory.has(itemid))
+    if (shipHistory.has(parseInt(itemid))) {
+      res.send(JSON.stringify({ success: true, status: "shipped" }))
+      return
+    }
+
+    res.send(JSON.stringify({ success: true, status: "not-shipped" }))
+    return
+})
+
+// This endpoint lets a user review a seller. The HTTP request must contain a header called token.
+app.post("/review-seller", (req, res) => {
+    let tokenId = req.headers.token
+    let user = tokens.get(tokenId)
+    let parsed = JSON.parse(req.body)
+    let numStars = parsed.numStars
+    let contents = parsed.contents
+    let itemid = parsed.itemid
+    let sellerUsername = ""
+
+    if (tokenId == undefined) {
+      res.send(JSON.stringify({ success: false, reason: "token field missing" }))
+      return
+    }
+  
+    if (!tokens.has(tokenId)) {
+      res.send(JSON.stringify({ success: false, reason: "Invalid token" }))
+      return
+    }
+  
+    let found = false 
+    for (let keys of purchaseHistory.keys()) {
+      let obj = purchaseHistory.get(parseInt(keys))
+      if (Object.values(obj)[2] == itemid && Object.values(obj)[4] == user) {
+        sellerUsername = Object.values(obj)[3]
+        found = true
+      } 
+    }
+    
+    if (found == false) {
+      res.send(JSON.stringify({ success: false, reason: "User has not purchased this item"}))
+      return
+    }
+    
+    if (sellerReview.has(parseInt(itemid))) {
+      res.send(JSON.stringify({ success: false, reason: "This transaction was already reviewed"}))
+      return
+    }
+  
+    sellerReviewId ++
+    sellerReview.set(itemid, ({"numStars":numStars, "contents":contents,"from":user,"sellerUsername":sellerUsername}))
+    res.send(JSON.stringify({ success: true}))
+    console.log("SELLER REVIEW")
+    console.log(sellerReview)
+    return
+})
+
+// This endpoint retrieves all the reviews for a particular user.
+app.get("/reviews", (req, res) => {
+    let sellerUsername = req.query.sellerUsername
+    console.log("SELLER REVIEW")
+    console.log(sellerReview)
+  
+    let response = []
+    let from = ""
+    let contents = ""
+    let numStars = ""
+    for (let keys of sellerReview.keys()) {
+        let obj = sellerReview.get(parseInt(keys))
+        if (Object.values(obj)[3] == sellerUsername ) {
+          from = Object.values(obj)[2]
+          contents = Object.values(obj)[1]
+          numStars = Object.values(obj)[0]
+          response.push({"from": from,"contents":contents,"numStars":numStars})
+        }
+    }
+    
+  
+    res.send(JSON.stringify({ success: true, reviews: response}))
+    return
+
+})
+
+// This endpoint retrieves all items that a user is currently selling
+app.get("/selling", (req, res) => {
+    let sellerUsername = req.query.sellerUsername
+    console.log("LISTING")
+    console.log(listing)
+    if (sellerUsername == undefined) {
+        res.send(JSON.stringify({ success: false, reason: "sellerUsername field missing" }))
+        return
+    }  
+  
+    let response = []
+    let price = ""
+    let description = ""
+    let itemId = ""
+    for (let keys of listing.keys()) {
+        let obj = listing.get(parseInt(keys))
+        console.log(Object.values(obj)[2])
+        console.log(sellerUsername)
+        if (Object.values(obj)[2][1] == sellerUsername ) {
+          price = Object.values(obj)[0][1]
+          description = Object.values(obj)[1][1]
+          itemId = keys
+          sellerUsername = Object.values(obj)[2][1]
+          response.push({"price": price,"description":description,"itemId":itemId,"sellerUsername":sellerUsername})
+        }
+    }
+    
+
+    res.send(JSON.stringify({ success: true, selling: response}))
+    return
+
 })
 
 // listen for requests :)
